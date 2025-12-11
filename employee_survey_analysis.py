@@ -240,6 +240,11 @@ if uploaded_file:
                                 color='#2c3e50',
                                 xytext=(0, spacing),
                                 textcoords='offset points')
+        
+        def wrap_labels(labels, max_width=40):
+            """Wrap long labels to multiple lines."""
+            import textwrap
+            return ['\n'.join(textwrap.wrap(label, max_width)) for label in labels]
 
         # ================================================================
         # CHART 1: JOB FULFILLMENT
@@ -247,7 +252,7 @@ if uploaded_file:
         st.markdown("---")
         st.markdown("### 💼 Job Fulfillment Analysis")
         
-        fig1, ax1 = plt.subplots(figsize=(14, 7))
+        fig1, ax1 = plt.subplots(figsize=(16, 8))
         fulfillment_counts = df_filtered[fulfillment_col].value_counts()
         
         colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe']
@@ -261,12 +266,16 @@ if uploaded_file:
         )
         
         ax1.set_title('How fulfilling and rewarding do you find your work?', 
-                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
         ax1.set_xlabel('')
-        ax1.set_ylabel('Number of Responses', fontsize=12, fontweight='600')
+        ax1.set_ylabel('Number of Responses', fontsize=13, fontweight='600')
         ax1.spines['top'].set_visible(False)
         ax1.spines['right'].set_visible(False)
-        plt.xticks(rotation=0, ha='center')
+        
+        # Wrap x-axis labels
+        wrapped_labels = wrap_labels(fulfillment_counts.index, max_width=35)
+        ax1.set_xticklabels(wrapped_labels, rotation=0, ha='center', fontsize=10)
+        
         add_value_labels(ax1, spacing=3)
         plt.tight_layout()
         st.pyplot(fig1)
@@ -277,7 +286,7 @@ if uploaded_file:
         st.markdown("---")
         st.markdown("### 📚 Training Preferences")
         
-        fig2, ax2 = plt.subplots(figsize=(14, 7))
+        fig2, ax2 = plt.subplots(figsize=(16, 8))
         training_counts = df_filtered[training_pref_col].value_counts()
         
         colors2 = ['#11998e', '#38ef7d', '#96e6a1', '#d4fc79']
@@ -291,12 +300,16 @@ if uploaded_file:
         )
         
         ax2.set_title('How do you feel about live virtual training (Zoom/Teams) vs in-person?',
-                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
         ax2.set_xlabel('')
-        ax2.set_ylabel('Number of Responses', fontsize=12, fontweight='600')
+        ax2.set_ylabel('Number of Responses', fontsize=13, fontweight='600')
         ax2.spines['top'].set_visible(False)
         ax2.spines['right'].set_visible(False)
-        plt.xticks(rotation=0, ha='center')
+        
+        # Wrap x-axis labels
+        wrapped_labels = wrap_labels(training_counts.index, max_width=35)
+        ax2.set_xticklabels(wrapped_labels, rotation=0, ha='center', fontsize=10)
+        
         add_value_labels(ax2, spacing=3)
         plt.tight_layout()
         st.pyplot(fig2)
@@ -307,11 +320,16 @@ if uploaded_file:
         st.markdown("---")
         st.markdown("### 🔍 Disability Analysis by Age Group")
         
+        # Clean up disability column
         df_filtered[disability_col] = df_filtered[disability_col].fillna("No Disability")
+        df_filtered[disability_col] = df_filtered[disability_col].replace('nan', 'No Disability')
+        
+        # Get unique disability values and create dynamic palette
+        unique_disability_values = df_filtered[disability_col].unique()
+        base_colors = ['#3498db', '#e74c3c', '#95a5a6', '#2ecc71', '#f39c12', '#9b59b6']
+        disability_palette = {val: base_colors[i % len(base_colors)] for i, val in enumerate(unique_disability_values)}
         
         fig3, ax3 = plt.subplots(figsize=(14, 7))
-        
-        disability_palette = {'Yes': '#e74c3c', 'No': '#3498db', 'Prefer not to say': '#95a5a6', 'No Disability': '#3498db'}
         
         sns.countplot(
             data=df_filtered,
