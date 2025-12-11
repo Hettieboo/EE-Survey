@@ -1,5 +1,5 @@
 # ================================================================
-# Streamlit Employee Survey Dashboard - Final Sweep
+# Streamlit Employee Survey Dashboard - Enhanced Version
 # ================================================================
 
 import pandas as pd
@@ -7,21 +7,109 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 
-sns.set(style="whitegrid")
-plt.rcParams['figure.figsize'] = (10,6)
+# ================================================================
+# CONFIGURATION & STYLING
+# ================================================================
 
+# Set page config FIRST
 st.set_page_config(page_title="Homes First Survey Dashboard", layout="wide")
-st.title("Homes First Employee Survey Dashboard")
 
-# 1️⃣ Upload dataset
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+# Seaborn and matplotlib styling
+sns.set_style("whitegrid")
+plt.rcParams['figure.figsize'] = (12, 6)
+plt.rcParams['font.size'] = 11
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['axes.titlesize'] = 14
+plt.rcParams['xtick.labelsize'] = 10
+plt.rcParams['ytick.labelsize'] = 10
+
+# Custom CSS for better aesthetics
+st.markdown("""
+    <style>
+    /* Main title styling */
+    h1 {
+        color: #2c3e50;
+        font-weight: 700;
+        text-align: center;
+        padding: 20px 0;
+        margin-bottom: 30px;
+        border-bottom: 3px solid #3498db;
+    }
+    
+    /* Section headers */
+    h2 {
+        color: #34495e;
+        font-weight: 600;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 10px;
+        border-left: 5px solid #3498db;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg, [data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+    }
+    
+    /* Metric containers */
+    .metric-container {
+        background: linear-gradient(135deg, var(--color1), var(--color2));
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .metric-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .metric-subtitle {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+    
+    /* Filter section */
+    .filter-header {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ================================================================
+# TITLE
+# ================================================================
+st.markdown("<h1>🏠 Homes First Employee Survey Dashboard</h1>", unsafe_allow_html=True)
+
+# ================================================================
+# FILE UPLOAD
+# ================================================================
+uploaded_file = st.file_uploader("📁 Upload your Excel file", type=["xlsx"])
+
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
-    st.write("Dataset shape:", df.shape)
-
-    # -----------------------------
-    # Key columns
-    # -----------------------------
+    
+    # ================================================================
+    # IDENTIFY KEY COLUMNS
+    # ================================================================
     role_col = [c for c in df.columns if "role" in c.lower() or "department" in c.lower()][0]
     age_col = [c for c in df.columns if "age" in c.lower()][0]
     gender_col = [c for c in df.columns if "gender" in c.lower()][0]
@@ -38,135 +126,249 @@ if uploaded_file:
     for col in [recognized_col, growth_col, impact_col, training_pref_col, fulfillment_col, disability_col]:
         df[col] = df[col].astype(str)
 
-    # -----------------------------
-    # Filters
-    # -----------------------------
-    st.sidebar.header("Filter Employees")
-    role_filter = st.sidebar.multiselect("Role/Department", df[role_col].unique(), default=df[role_col].unique())
-    age_filter = st.sidebar.multiselect("Age Group", df[age_col].unique(), default=df[age_col].unique())
-    gender_filter = st.sidebar.multiselect("Gender", df[gender_col].unique(), default=df[gender_col].unique())
-    df_filtered = df[df[role_col].isin(role_filter) & df[age_col].isin(age_filter) & df[gender_col].isin(gender_filter)]
-    st.write(f"Filtered dataset: {df_filtered.shape[0]} respondents")
+    # ================================================================
+    # SIDEBAR FILTERS
+    # ================================================================
+    with st.sidebar:
+        st.markdown('<p class="filter-header">🔍 Filter Options</p>', unsafe_allow_html=True)
+        
+        role_filter = st.multiselect(
+            "Role/Department",
+            options=sorted(df[role_col].unique()),
+            default=df[role_col].unique()
+        )
+        
+        age_filter = st.multiselect(
+            "Age Group",
+            options=sorted(df[age_col].unique()),
+            default=df[age_col].unique()
+        )
+        
+        gender_filter = st.multiselect(
+            "Gender",
+            options=sorted(df[gender_col].unique()),
+            default=df[gender_col].unique()
+        )
+        
+        st.markdown("---")
+        st.markdown("### 📊 Dataset Info")
+        st.info(f"**Total Respondents:** {len(df)}")
 
-    # -----------------------------
-    # KPIs in horizontal row
-    # -----------------------------
+    # Apply filters
+    df_filtered = df[
+        df[role_col].isin(role_filter) & 
+        df[age_col].isin(age_filter) & 
+        df[gender_col].isin(gender_filter)
+    ]
+    
+    st.markdown(f"<div style='text-align: center; padding: 15px; background-color: #e8f4f8; border-radius: 10px; margin-bottom: 30px;'>"
+                f"<strong>Showing data for {df_filtered.shape[0]} respondents</strong></div>", 
+                unsafe_allow_html=True)
+
+    # ================================================================
+    # KPI METRICS
+    # ================================================================
     total = df_filtered.shape[0]
+    
+    if total == 0:
+        st.warning("⚠️ No data matches the selected filters. Please adjust your selections.")
+    else:
+        # Calculate metrics
+        recommend_scores = pd.to_numeric(df_filtered[recommend_col], errors='coerce')
+        positive_rec = recommend_scores[recommend_scores >= 8].count()
+        avg_recommend = recommend_scores.mean()
+        
+        recognized = df_filtered[df_filtered[recognized_col].str.lower().str.contains("yes|somewhat", na=False)].shape[0]
+        growth = df_filtered[df_filtered[growth_col].str.lower().str.contains("yes", na=False)].shape[0]
+        impact = df_filtered[df_filtered[impact_col].str.lower().str.contains("positive impact", na=False)].shape[0]
 
-    recommend_scores = pd.to_numeric(df_filtered[recommend_col], errors='coerce')
-    positive_rec = recommend_scores[recommend_scores >= 8].count()
-    avg_recommend = recommend_scores.mean()
+        # Display KPIs in centered grid
+        st.markdown("### 📈 Key Performance Indicators")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+                <div class="metric-container" style="--color1: #667eea; --color2: #764ba2;">
+                    <div class="metric-title">Recommendation Rate</div>
+                    <div class="metric-value">{positive_rec}/{total}</div>
+                    <div class="metric-subtitle">Avg: {avg_recommend:.1f}/10</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+                <div class="metric-container" style="--color1: #11998e; --color2: #38ef7d;">
+                    <div class="metric-title">Feel Recognized</div>
+                    <div class="metric-value">{recognized}/{total}</div>
+                    <div class="metric-subtitle">{recognized/total*100:.1f}%</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+                <div class="metric-container" style="--color1: #ee0979; --color2: #ff6a00;">
+                    <div class="metric-title">See Growth Potential</div>
+                    <div class="metric-value">{growth}/{total}</div>
+                    <div class="metric-subtitle">{growth/total*100:.1f}%</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown(f"""
+                <div class="metric-container" style="--color1: #f857a6; --color2: #ff5858;">
+                    <div class="metric-title">Feel Positive Impact</div>
+                    <div class="metric-value">{impact}/{total}</div>
+                    <div class="metric-subtitle">{impact/total*100:.1f}%</div>
+                </div>
+            """, unsafe_allow_html=True)
 
-    recognized = df_filtered[df_filtered[recognized_col].str.lower().str.contains("yes|somewhat", na=False)].shape[0]
-    growth = df_filtered[df_filtered[growth_col].str.lower().str.contains("yes", na=False)].shape[0]
-    impact = df_filtered[df_filtered[impact_col].str.lower().str.contains("positive impact", na=False)].shape[0]
-
-    def kpi_tile(title, value, color):
-        st.markdown(f"""
-            <div style="
-                display:inline-block;
-                width: 150px;
-                height: 120px;
-                background-color: {color};
-                border-radius: 10px;
-                margin:5px;
-                text-align:center;
-                color:white;
-                font-size:16px;
-            ">
-                <div style='padding-top:20px'><b>{title}</b></div>
-                <div style='font-size:24px; padding-top:10px'>{value}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.write("")  # spacing
-    kpi_cols = st.columns(4)
-    with kpi_cols[0]: kpi_tile("Recommend Homes First", f"{positive_rec}/{total} ({avg_recommend:.1f}/10 avg)", "#4b3fa0")
-    with kpi_cols[1]: kpi_tile("Feel Recognized", f"{recognized}/{total} ({recognized/total*100:.1f}%)", "#007b5f")
-    with kpi_cols[2]: kpi_tile("See Potential for Growth", f"{growth}/{total} ({growth/total*100:.1f}%)", "#b3396b")
-    with kpi_cols[3]: kpi_tile("Feel Positive Impact", f"{impact}/{total} ({impact/total*100:.1f}%)", "#a03d2d")
-
-    # -----------------------------
-    # Helper for counts inside bars
-    # -----------------------------
-    def add_counts(ax, vertical=True):
-        for p in ax.patches:
-            if vertical:
+        # ================================================================
+        # HELPER FUNCTION FOR BAR LABELS
+        # ================================================================
+        def add_value_labels(ax, spacing=0):
+            """Add labels to the end of each bar in a bar chart."""
+            for p in ax.patches:
                 height = p.get_height()
                 if height > 0:
-                    ax.annotate(f'{int(height)}', 
-                                (p.get_x() + p.get_width() / 2., height/2),
-                                ha='center', va='center', color='white', fontsize=12)
-            else:
-                width = p.get_width()
-                if width > 0:
-                    ax.annotate(f'{int(width)}',
-                                (width/2, p.get_y() + p.get_height()/2),
-                                ha='center', va='center', color='white', fontsize=12)
+                    ax.annotate(f'{int(height)}',
+                                (p.get_x() + p.get_width() / 2., height),
+                                ha='center',
+                                va='bottom',
+                                fontsize=11,
+                                fontweight='bold',
+                                color='#2c3e50',
+                                xytext=(0, spacing),
+                                textcoords='offset points')
 
-    # -----------------------------
-    # Job Fulfillment Chart
-    # -----------------------------
-    st.header("Job Fulfillment")
-    fig, ax = plt.subplots(figsize=(14,10))
-    order = df_filtered[fulfillment_col].value_counts().index
-    sns.countplot(x=df_filtered[fulfillment_col], order=order, palette=sns.color_palette("plasma", len(order)).as_hex(), ax=ax)
-    ax.set_title("How fulfilling and rewarding do you find your work?", fontsize=16, pad=60)
-    plt.xticks(rotation=0, ha='center')
-    add_counts(ax)
-    plt.subplots_adjust(top=0.88)
-    st.pyplot(fig)
+        # ================================================================
+        # CHART 1: JOB FULFILLMENT
+        # ================================================================
+        st.markdown("---")
+        st.markdown("### 💼 Job Fulfillment Analysis")
+        
+        fig1, ax1 = plt.subplots(figsize=(14, 7))
+        fulfillment_counts = df_filtered[fulfillment_col].value_counts()
+        
+        colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe']
+        sns.barplot(
+            x=fulfillment_counts.index,
+            y=fulfillment_counts.values,
+            palette=colors[:len(fulfillment_counts)],
+            ax=ax1,
+            edgecolor='white',
+            linewidth=2
+        )
+        
+        ax1.set_title('How fulfilling and rewarding do you find your work?', 
+                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+        ax1.set_xlabel('')
+        ax1.set_ylabel('Number of Responses', fontsize=12, fontweight='600')
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        plt.xticks(rotation=0, ha='center')
+        add_value_labels(ax1, spacing=3)
+        plt.tight_layout()
+        st.pyplot(fig1)
 
-    # -----------------------------
-    # Training Preferences Chart
-    # -----------------------------
-    st.header("Training Preferences")
-    fig, ax = plt.subplots(figsize=(14,10))
-    order = df_filtered[training_pref_col].value_counts().index
-    sns.countplot(x=df_filtered[training_pref_col], order=order, palette=sns.color_palette("muted", len(order)).as_hex(), ax=ax)
-    ax.set_title("How do you feel about live virtual training (Zoom/Teams) vs in-person?", fontsize=16, pad=60)
-    plt.xticks(rotation=0, ha='center')
-    add_counts(ax)
-    plt.subplots_adjust(top=0.88)
-    st.pyplot(fig)
+        # ================================================================
+        # CHART 2: TRAINING PREFERENCES
+        # ================================================================
+        st.markdown("---")
+        st.markdown("### 📚 Training Preferences")
+        
+        fig2, ax2 = plt.subplots(figsize=(14, 7))
+        training_counts = df_filtered[training_pref_col].value_counts()
+        
+        colors2 = ['#11998e', '#38ef7d', '#96e6a1', '#d4fc79']
+        sns.barplot(
+            x=training_counts.index,
+            y=training_counts.values,
+            palette=colors2[:len(training_counts)],
+            ax=ax2,
+            edgecolor='white',
+            linewidth=2
+        )
+        
+        ax2.set_title('How do you feel about live virtual training (Zoom/Teams) vs in-person?',
+                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+        ax2.set_xlabel('')
+        ax2.set_ylabel('Number of Responses', fontsize=12, fontweight='600')
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        plt.xticks(rotation=0, ha='center')
+        add_value_labels(ax2, spacing=3)
+        plt.tight_layout()
+        st.pyplot(fig2)
 
-    # -----------------------------
-    # Disabilities Analysis - Age
-    # -----------------------------
-    st.header("Disabilities Analysis - Age")
-    df_filtered[disability_col] = df_filtered[disability_col].fillna("No Disability")
-    fig, ax = plt.subplots(figsize=(14,8))
-    sns.countplot(
-        x=df_filtered[age_col],
-        hue=df_filtered[disability_col],
-        palette=sns.color_palette("dark", len(df_filtered[disability_col].unique())).as_hex(),
-        order=df_filtered[age_col].value_counts().index,
-        ax=ax
-    )
-    ax.set_title("Do you identify as an individual living with a disability? - by Age Group", fontsize=16, pad=60)
-    plt.xticks(rotation=0, ha='center')
-    plt.ylabel("Number of Employees")
-    plt.xlabel("Age Group")
-    plt.legend(title="Disability Status", bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.subplots_adjust(top=0.88)
-    st.pyplot(fig)
+        # ================================================================
+        # CHART 3: DISABILITIES BY AGE
+        # ================================================================
+        st.markdown("---")
+        st.markdown("### 🔍 Disability Analysis by Age Group")
+        
+        df_filtered[disability_col] = df_filtered[disability_col].fillna("No Disability")
+        
+        fig3, ax3 = plt.subplots(figsize=(14, 7))
+        
+        disability_palette = {'Yes': '#e74c3c', 'No': '#3498db', 'Prefer not to say': '#95a5a6', 'No Disability': '#3498db'}
+        
+        sns.countplot(
+            data=df_filtered,
+            x=age_col,
+            hue=disability_col,
+            palette=disability_palette,
+            order=sorted(df_filtered[age_col].unique()),
+            ax=ax3,
+            edgecolor='white',
+            linewidth=1.5
+        )
+        
+        ax3.set_title('Do you identify as an individual living with a disability? - by Age Group',
+                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+        ax3.set_xlabel('Age Group', fontsize=12, fontweight='600')
+        ax3.set_ylabel('Number of Employees', fontsize=12, fontweight='600')
+        ax3.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+        ax3.legend(title='Disability Status', title_fontsize=11, fontsize=10, 
+                  loc='upper right', frameon=True, shadow=True)
+        plt.xticks(rotation=0, ha='center')
+        plt.tight_layout()
+        st.pyplot(fig3)
 
-    # -----------------------------
-    # Disabilities Analysis - Gender
-    # -----------------------------
-    st.header("Disabilities Analysis - Gender")
-    fig, ax = plt.subplots(figsize=(14,8))
-    sns.countplot(
-        x=df_filtered[gender_col],
-        hue=df_filtered[disability_col],
-        palette=sns.color_palette("deep", len(df_filtered[disability_col].unique())).as_hex(),
-        order=df_filtered[gender_col].value_counts().index,
-        ax=ax
-    )
-    ax.set_title("Do you identify as an individual living with a disability? - by Gender", fontsize=16, pad=60)
-    plt.xticks(rotation=0, ha='center')
-    plt.ylabel("Number of Employees")
-    plt.xlabel("Gender")
-    plt.legend(title="Disability Status", bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.subplots_adjust(top=0.88)
-    st.pyplot(fig)
+        # ================================================================
+        # CHART 4: DISABILITIES BY GENDER
+        # ================================================================
+        st.markdown("---")
+        st.markdown("### 🔍 Disability Analysis by Gender")
+        
+        fig4, ax4 = plt.subplots(figsize=(14, 7))
+        
+        sns.countplot(
+            data=df_filtered,
+            x=gender_col,
+            hue=disability_col,
+            palette=disability_palette,
+            order=sorted(df_filtered[gender_col].unique()),
+            ax=ax4,
+            edgecolor='white',
+            linewidth=1.5
+        )
+        
+        ax4.set_title('Do you identify as an individual living with a disability? - by Gender',
+                     fontsize=16, fontweight='bold', pad=20, color='#2c3e50')
+        ax4.set_xlabel('Gender', fontsize=12, fontweight='600')
+        ax4.set_ylabel('Number of Employees', fontsize=12, fontweight='600')
+        ax4.spines['top'].set_visible(False)
+        ax4.spines['right'].set_visible(False)
+        ax4.legend(title='Disability Status', title_fontsize=11, fontsize=10,
+                  loc='upper right', frameon=True, shadow=True)
+        plt.xticks(rotation=0, ha='center')
+        plt.tight_layout()
+        st.pyplot(fig4)
+        
+        st.markdown("---")
+        st.markdown("<p style='text-align: center; color: #7f8c8d; padding: 20px;'>Dashboard created with Streamlit • Homes First Employee Survey 2024</p>", unsafe_allow_html=True)
+
+else:
+    st.info("👆 Please upload an Excel file to begin analyzing the survey data.")
