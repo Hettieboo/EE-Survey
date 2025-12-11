@@ -1,5 +1,5 @@
 # ================================================================
-# Streamlit Employee Survey Dashboard - Updated (Minimal Changes)
+# Streamlit Employee Survey Dashboard - Updated with Label Fixes
 # ================================================================
 
 import pandas as pd
@@ -79,13 +79,13 @@ if uploaded_file:
                 if height > 0:
                     ax.annotate(f'{int(height)}', 
                                 (p.get_x() + p.get_width() / 2., height/2),
-                                ha='center', va='center', color='white', fontsize=10)
+                                ha='center', va='center', color='white', fontsize=12)
             else:
                 width = p.get_width()
                 if width > 0:
                     ax.annotate(f'{int(width)}',
                                 (width/2, p.get_y() + p.get_height()/2),
-                                ha='center', va='center', color='white', fontsize=10)
+                                ha='center', va='center', color='white', fontsize=12)
 
     # -----------------------------
     # Demographics
@@ -94,52 +94,58 @@ if uploaded_file:
     col1, col2, col3 = st.columns(3)
 
     # Role
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12,6))
     order = df_filtered[role_col].value_counts().index
     sns.countplot(y=df_filtered[role_col], order=order, palette='viridis', ax=ax)
-    ax.set_title("Respondents by Role/Department")
+    ax.set_title("Respondents by Role/Department", fontsize=16, pad=15)
+    add_counts(ax, vertical=False)
+    plt.tight_layout(pad=2)
     col1.pyplot(fig)
 
     # Age
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12,6))
     order = df_filtered[age_col].value_counts().index
     sns.countplot(x=df_filtered[age_col], order=order, palette='magma', ax=ax)
-    ax.set_title("Respondents by Age Group")
+    ax.set_title("Respondents by Age Group", fontsize=16, pad=15)
     plt.xticks(rotation=0)
     add_counts(ax)
+    plt.tight_layout(pad=2)
     col2.pyplot(fig)
 
     # Gender
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12,6))
     order = df_filtered[gender_col].value_counts().index
     sns.countplot(x=df_filtered[gender_col], order=order, palette='coolwarm', ax=ax)
-    ax.set_title("Respondents by Gender")
+    ax.set_title("Respondents by Gender", fontsize=16, pad=15)
     plt.xticks(rotation=0)
     add_counts(ax)
+    plt.tight_layout(pad=2)
     col3.pyplot(fig)
 
     # -----------------------------
-    # Job Fulfillment
+    # Job Fulfillment (bigger figure + counts inside)
     # -----------------------------
     st.header("Job Fulfillment")
-    fig, ax = plt.subplots()
     order = df_filtered[fulfillment_col].value_counts().index
+    fig, ax = plt.subplots(figsize=(14,8))
     sns.countplot(x=df_filtered[fulfillment_col], order=order, palette='plasma', ax=ax)
-    ax.set_title("Job Fulfillment")
-    plt.xticks(rotation=0)
+    ax.set_title("Job Fulfillment", fontsize=16, pad=15)
+    plt.xticks(rotation=0, ha='center')
     add_counts(ax)
+    plt.tight_layout(pad=2)
     st.pyplot(fig)
 
     # -----------------------------
-    # Training Preferences
+    # Training Preferences (bigger figure + counts inside)
     # -----------------------------
     st.header("Training Preferences")
-    fig, ax = plt.subplots()
     order = df_filtered[training_pref_col].value_counts().index
+    fig, ax = plt.subplots(figsize=(14,8))
     sns.countplot(x=df_filtered[training_pref_col], order=order, palette='Set2', ax=ax)
-    ax.set_title("Training Mode Preference")
-    plt.xticks(rotation=0)
+    ax.set_title("Training Mode Preference", fontsize=16, pad=15)
+    plt.xticks(rotation=0, ha='center')
     add_counts(ax)
+    plt.tight_layout(pad=2)
     st.pyplot(fig)
 
     # -----------------------------
@@ -148,13 +154,14 @@ if uploaded_file:
     st.header("Disability Analysis")
 
     def plot_stacked_pct(df, category, hue, palette):
+        fig, ax = plt.subplots(figsize=(12,7))
         cross = pd.crosstab(df[category], df[hue], normalize='index')*100
-        cross.plot(kind='bar', stacked=True, color=palette, figsize=(10,6))
+        cross.plot(kind='bar', stacked=True, color=palette, ax=ax)
         plt.ylabel("Percentage")
         plt.xticks(rotation=0)
         plt.legend(title=hue, bbox_to_anchor=(1.05,1), loc='upper left')
-        plt.tight_layout()
-        st.pyplot(plt.gcf())
+        plt.tight_layout(pad=2)
+        st.pyplot(fig)
         plt.clf()
 
     st.subheader("Disability by Age Group")
@@ -168,17 +175,17 @@ if uploaded_file:
     # -----------------------------
     st.header("Cross Analysis")
     st.subheader("Recommendation by Role")
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(14,7))
     sns.countplot(x=df_filtered[recommend_col], hue=df_filtered[role_col], data=df_filtered, palette='Set2', ax=ax)
-    ax.set_title("Recommendation by Role/Department")
+    ax.set_title("Recommendation by Role/Department", fontsize=16, pad=15)
     plt.xticks(rotation=0)
     plt.legend(bbox_to_anchor=(1.05,1), loc='upper left')
     st.pyplot(fig)
 
     st.subheader("Recommendation by Age Group")
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(14,7))
     sns.countplot(x=df_filtered[recommend_col], hue=df_filtered[age_col], data=df_filtered, palette='Set3', ax=ax)
-    ax.set_title("Recommendation by Age Group")
+    ax.set_title("Recommendation by Age Group", fontsize=16, pad=15)
     plt.xticks(rotation=0)
     plt.legend(bbox_to_anchor=(1.05,1), loc='upper left')
     st.pyplot(fig)
