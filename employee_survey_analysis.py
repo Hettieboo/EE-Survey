@@ -1,5 +1,5 @@
 # ================================================================
-# Interactive Employee Survey Dashboard - Streamlit
+# Interactive Employee Survey Dashboard - Streamlit (Fixed)
 # ================================================================
 
 import pandas as pd
@@ -34,6 +34,12 @@ if uploaded_file:
     impact_col = [c for c in df.columns if "positive impact" in c.lower()][0]
     training_pref_col = [c for c in df.columns if "live virtual training" in c.lower()][0]
     fulfillment_col = [c for c in df.columns if "fulfilling and rewarding" in c.lower()][0]
+
+    # -----------------------------
+    # Convert string-based columns to str to avoid errors
+    # -----------------------------
+    for col in [recommend_col, recognized_col, growth_col, impact_col, training_pref_col, fulfillment_col]:
+        df[col] = df[col].astype(str)
 
     # -----------------------------
     # Interactive filters
