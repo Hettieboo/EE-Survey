@@ -2,14 +2,24 @@
 Employee Survey Analysis Dashboard - Streamlit App
 Save this as: survey_app.py
 Run with: streamlit run survey_app.py
+
+Requirements: streamlit pandas openpyxl matplotlib seaborn reportlab
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 from collections import Counter
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
+from io import BytesIO
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from datetime import datetime
 
 # Page configuration
 st.set_page_config(
@@ -18,6 +28,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Set style
+sns.set_style("whitegrid")
+plt.rcParams['figure.facecolor'] = 'white'
 
 # Custom CSS
 st.markdown("""
@@ -32,14 +46,15 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] {
         gap: 2rem;
     }
-    .metric-card {
+    div[data-testid="stMetricValue"] {
+        font-size: 2rem;
+    }
+    .metric-container {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1.5rem;
         border-radius: 10px;
         color: white;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 2rem;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -155,30 +170,266 @@ def calculate_sentiment(df, text_cols):
     return positive_count, negative_count
 
 
-def create_bar_chart(data, x, y, title, color=None, orientation='v'):
-    """Create a plotly bar chart"""
-    if orientation == 'h':
-        fig = px.bar(data, x=x, y=y, orientation='h', title=title,
-                    color=color, color_continuous_scale='Viridis')
-    else:
-        fig = px.bar(data, x=x, y=y, title=title,
-                    color=color, color_continuous_scale='Blues')
+def create_bar_chart(data, x_col, y_col, title, figsize=(10, 6), horizontal=False, color='steelblue'):
+    """Create a matplotlib bar chart"""
+    fig, ax = plt.subplots(figsize=figsize)
     
-    fig.update_layout(
-        height=400,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=12)
+    if horizontal:
+        bars = ax.barh(data[y_col], data[x_col], color=color)
+        ax.set_xlabel(x_col, fontsize=11)
+        ax.set_ylabel(y_col, fontsize=11)
+    else:
+        bars = ax.bar(data[x_col], data[y_col], color=color)
+        ax.set_xlabel(x_col, fontsize=11)
+        ax.set_ylabel(y_col, fontsize=11)
+        plt.xticks(rotation=45, ha='right')
+    
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    
+    # Add value labels
+    if horizontal:
+        for bar in bars:
+            width = bar.get_width()
+            ax.text(width, bar.get_y() + bar.get_height()/2.,
+                   f'{int(width)}', ha='left', va='center', fontsize=9)
+    else:
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{int(height)}', ha='center', va='bottom', fontsize=9)
+    
+    plt.tight_layout()
+    return fig
+
+
+def create_pie_chart(data, values_col, names_col, title, figsize=(8, 8)):
+    """Create a matplotlib pie chart"""
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    colors = sns.color_palette("Set3", len(data))
+    wedges, texts, autotexts = ax.pie(
+        data[values_col], 
+        labels=data[names_col],
+        autopct='%1.1f%%',
+        colors=colors,
+        startangle=90
     )
+    
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontweight('bold')
+        autotext.set_fontsize(10)
+    
+    plt.tight_layout()
     return fig
 
 
-def create_pie_chart(data, values, names, title):
-    """Create a plotly pie chart"""
-    fig = px.pie(data, values=values, names=names, title=title)
-    fig.update_traces(textposition='inside', textinfo='percent+label')
-    fig.update_layout(height=400)
-    return fig
+def generate_pdf_report(df, cols, positive_count, negative_count):
+    """Generate a comprehensive PDF report"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#1f2937'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#3b82f6'),
+        spaceAfter=12,
+        spaceBefore=12,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Title
+    title = Paragraph("📊 Employee Survey Analysis Report", title_style)
+    story.append(title)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Date
+    date_text = Paragraph(f"<i>Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</i>", styles['Normal'])
+    story.append(date_text)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Executive Summary
+    story.append(Paragraph("Executive Summary", heading_style))
+    
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Responses', str(len(df))],
+        ['Survey Questions', str(len(df.columns))],
+        ['Positive Mentions', str(positive_count)],
+        ['Negative Mentions', str(negative_count)],
+        ['Text Response Columns', str(len(cols['text']) if cols['text'] else 0)]
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+    ]))
+    
+    story.append(summary_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Sentiment Analysis
+    if positive_count > 0 or negative_count > 0:
+        story.append(Paragraph("Sentiment Analysis", heading_style))
+        
+        sentiment_ratio = positive_count / (positive_count + negative_count) * 100 if (positive_count + negative_count) > 0 else 0
+        sentiment_text = f"The survey shows a {sentiment_ratio:.1f}% positive sentiment ratio, with {positive_count} positive indicators and {negative_count} areas of concern identified across all responses."
+        story.append(Paragraph(sentiment_text, styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+    
+    # Demographics
+    if cols['role']:
+        story.append(PageBreak())
+        story.append(Paragraph("Demographics: Role Distribution", heading_style))
+        
+        role_data = df[cols['role']].value_counts().reset_index()
+        role_data.columns = ['Role', 'Count']
+        role_data['Percentage'] = (role_data['Count'] / role_data['Count'].sum() * 100).round(1)
+        
+        # Convert to table
+        role_table_data = [['Role', 'Count', 'Percentage']]
+        for _, row in role_data.iterrows():
+            role_table_data.append([str(row['Role']), str(row['Count']), f"{row['Percentage']}%"])
+        
+        role_table = Table(role_table_data, colWidths=[3*inch, 1*inch, 1*inch])
+        role_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8b5cf6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        
+        story.append(role_table)
+        story.append(Spacer(1, 0.2*inch))
+    
+    # Theme Analysis
+    if cols['text']:
+        story.append(PageBreak())
+        story.append(Paragraph("Theme Analysis", heading_style))
+        
+        theme_counts = analyze_themes(df, cols['text'])
+        theme_df = pd.DataFrame(list(theme_counts.items()), columns=['Theme', 'Mentions'])
+        theme_df = theme_df.sort_values('Mentions', ascending=False)
+        
+        # Convert to table
+        theme_table_data = [['Theme', 'Mentions']]
+        for _, row in theme_df.iterrows():
+            theme_table_data.append([str(row['Theme']), str(row['Mentions'])])
+        
+        theme_table = Table(theme_table_data, colWidths=[4*inch, 1.5*inch])
+        theme_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#10b981')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        
+        story.append(theme_table)
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Word Frequency
+        story.append(PageBreak())
+        story.append(Paragraph("Most Frequent Words", heading_style))
+        
+        word_freq = get_word_frequency(df, cols['text'], top_n=15)
+        if word_freq:
+            word_table_data = [['Word', 'Frequency']]
+            for word, freq in word_freq:
+                word_table_data.append([word, str(freq)])
+            
+            word_table = Table(word_table_data, colWidths=[3*inch, 2*inch])
+            word_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ec4899')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+            ]))
+            
+            story.append(word_table)
+    
+    # Recommendations section
+    if cols['recommend']:
+        story.append(PageBreak())
+        story.append(Paragraph("Recommendation Likelihood", heading_style))
+        
+        rec_data = df[cols['recommend']].value_counts().reset_index()
+        rec_data.columns = ['Response', 'Count']
+        rec_data['Percentage'] = (rec_data['Count'] / rec_data['Count'].sum() * 100).round(1)
+        
+        rec_table_data = [['Response', 'Count', 'Percentage']]
+        for _, row in rec_data.iterrows():
+            rec_table_data.append([str(row['Response']), str(row['Count']), f"{row['Percentage']}%"])
+        
+        rec_table = Table(rec_table_data, colWidths=[3.5*inch, 1*inch, 1*inch])
+        rec_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        
+        story.append(rec_table)
+    
+    # Footer
+    story.append(Spacer(1, 0.5*inch))
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
+    footer = Paragraph("<i>Generated by Employee Survey Analysis Tool • Built with Streamlit</i>", footer_style)
+    story.append(footer)
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 
 # ================================================================
@@ -236,6 +487,11 @@ if not uploaded_file:
     2. **Explore** different tabs for various insights
     3. **Export** findings as needed
     4. **Share** results with your team
+    
+    ### 📦 Requirements
+    ```bash
+    pip install streamlit pandas openpyxl matplotlib seaborn reportlab
+    ```
     """)
     
     st.stop()
@@ -264,6 +520,25 @@ if cols['text']:
 # SUMMARY METRICS
 # ================================================================
 st.markdown("### 📈 Key Metrics")
+
+# Add PDF download button in header
+col_header1, col_header2 = st.columns([3, 1])
+with col_header2:
+    if st.button("📄 Download Full Report as PDF", type="primary", use_container_width=True):
+        with st.spinner("Generating PDF report..."):
+            try:
+                pdf_buffer = generate_pdf_report(df, cols, positive_count, negative_count)
+                st.download_button(
+                    "⬇️ Click to Download PDF",
+                    pdf_buffer,
+                    f"survey_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    "application/pdf",
+                    use_container_width=True
+                )
+                st.success("✅ PDF generated successfully!")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
+
 metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
 
 with metric_col1:
@@ -305,10 +580,10 @@ with tab1:
         rec_data.columns = ['Response', 'Count']
         
         fig = create_bar_chart(rec_data, 'Response', 'Count', 
-                              'How likely are you to recommend?', 
-                              color='Count')
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+                              'How likely are you to recommend?',
+                              figsize=(12, 6), color='#3b82f6')
+        st.pyplot(fig)
+        plt.close()
         
         total_responses = rec_data['Count'].sum()
         st.info(f"**Total Responses:** {total_responses}")
@@ -329,12 +604,20 @@ with tab1:
             'Count': [positive_count, negative_count]
         })
         
-        fig = px.bar(sentiment_df, x='Sentiment', y='Count',
-                    color='Sentiment',
-                    color_discrete_map={'Positive': '#10b981', 'Negative': '#ef4444'},
-                    title='Sentiment Distribution')
-        fig.update_layout(height=350, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        fig, ax = plt.subplots(figsize=(10, 5))
+        colors = ['#10b981', '#ef4444']
+        bars = ax.bar(sentiment_df['Sentiment'], sentiment_df['Count'], color=colors)
+        ax.set_title('Sentiment Distribution', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Count', fontsize=11)
+        
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{int(height)}', ha='center', va='bottom', fontsize=11, fontweight='bold')
+        
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
 
 # ================================================================
 # TAB 2: DEMOGRAPHICS
@@ -353,8 +636,9 @@ with tab2:
             
             fig = create_bar_chart(role_data, 'Count', 'Role',
                                   'Distribution by Role/Department',
-                                  color='Count', orientation='h')
-            st.plotly_chart(fig, use_container_width=True)
+                                  figsize=(10, 8), horizontal=True, color='#8b5cf6')
+            st.pyplot(fig)
+            plt.close()
             
             # Show table
             with st.expander("📊 View detailed breakdown"):
@@ -371,7 +655,8 @@ with tab2:
             age_data.columns = ['Age Group', 'Count']
             
             fig = create_pie_chart(age_data, 'Count', 'Age Group', 'Age Distribution')
-            st.plotly_chart(fig, use_container_width=True)
+            st.pyplot(fig)
+            plt.close()
             
             # Show table
             with st.expander("📊 View detailed breakdown"):
@@ -394,11 +679,11 @@ with tab3:
         if word_freq:
             word_df = pd.DataFrame(word_freq, columns=['Word', 'Frequency'])
             
-            fig = px.bar(word_df, x='Frequency', y='Word', orientation='h',
-                        title='Top 25 Most Frequent Words',
-                        color='Frequency', color_continuous_scale='Plasma')
-            fig.update_layout(height=600)
-            st.plotly_chart(fig, use_container_width=True)
+            fig = create_bar_chart(word_df, 'Frequency', 'Word',
+                                  'Top 25 Most Frequent Words',
+                                  figsize=(10, 12), horizontal=True, color='#ec4899')
+            st.pyplot(fig)
+            plt.close()
             
             # Download option
             csv = word_df.to_csv(index=False).encode('utf-8')
@@ -436,11 +721,11 @@ with tab4:
         theme_df = theme_df.sort_values('Mentions', ascending=False)
         
         # Main chart
-        fig = px.bar(theme_df, x='Mentions', y='Theme', orientation='h',
-                    title='Key Themes in Survey Responses',
-                    color='Mentions', color_continuous_scale='RdYlGn')
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        fig = create_bar_chart(theme_df, 'Mentions', 'Theme',
+                              'Key Themes in Survey Responses',
+                              figsize=(10, 8), horizontal=True, color='#10b981')
+        st.pyplot(fig)
+        plt.close()
         
         # Theme details
         st.subheader("Theme Breakdown")
@@ -459,14 +744,14 @@ with tab4:
         
         # Export theme data
         st.markdown("---")
-        if st.button("📥 Export Theme Analysis", type="primary"):
-            csv = theme_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "Download CSV",
-                csv,
-                "theme_analysis.csv",
-                "text/csv"
-            )
+        csv = theme_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Export Theme Analysis",
+            csv,
+            "theme_analysis.csv",
+            "text/csv",
+            type="primary"
+        )
     else:
         st.info("No text columns available for theme analysis")
 
@@ -519,23 +804,35 @@ with tab5:
         )
     
     with col2:
-        # Create summary report
-        summary = {
-            'Total Responses': [len(df)],
-            'Positive Mentions': [positive_count],
-            'Negative Mentions': [negative_count],
-            'Text Columns': [len(cols['text']) if cols['text'] else 0]
-        }
-        summary_df = pd.DataFrame(summary)
-        summary_csv = summary_df.to_csv(index=False).encode('utf-8')
-        
-        st.download_button(
-            "📊 Download Summary Report",
-            summary_csv,
-            "summary_report.csv",
-            "text/csv",
-            use_container_width=True
-        )
+        # Generate PDF report
+        try:
+            pdf_buffer = generate_pdf_report(df, cols, positive_count, negative_count)
+            st.download_button(
+                "📄 Download PDF Report",
+                pdf_buffer,
+                f"survey_analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
+                "application/pdf",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"Error generating PDF: {str(e)}")
+            # Fallback to CSV
+            summary = {
+                'Total Responses': [len(df)],
+                'Positive Mentions': [positive_count],
+                'Negative Mentions': [negative_count],
+                'Text Columns': [len(cols['text']) if cols['text'] else 0]
+            }
+            summary_df = pd.DataFrame(summary)
+            summary_csv = summary_df.to_csv(index=False).encode('utf-8')
+            
+            st.download_button(
+                "📊 Download Summary CSV",
+                summary_csv,
+                "summary_report.csv",
+                "text/csv",
+                use_container_width=True
+            )
 
 # Footer
 st.markdown("---")
