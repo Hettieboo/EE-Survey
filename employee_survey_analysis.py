@@ -24,6 +24,10 @@ plt.rcParams['axes.titlesize'] = 14
 plt.rcParams['xtick.labelsize'] = 10
 plt.rcParams['ytick.labelsize'] = 10
 
+# Define distinct color palettes
+DISTINCT_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', 
+                   '#1abc9c', '#e67e22', '#34495e', '#c0392b', '#16a085']
+
 # Custom CSS for better aesthetics
 st.markdown("""
     <style>
@@ -247,7 +251,7 @@ if uploaded_file:
         def wrap_labels(labels, max_width=40):
             """Wrap long labels to multiple lines."""
             import textwrap
-            return ['\n'.join(textwrap.wrap(label, max_width)) for label in labels]
+            return ['\n'.join(textwrap.wrap(str(label), max_width)) for label in labels]
 
         # ================================================================
         # CHART 1: JOB FULFILLMENT
@@ -269,7 +273,7 @@ if uploaded_file:
         )
         
         ax1.set_title('How fulfilling and rewarding do you find your work?', 
-                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
+                     fontsize=18, fontweight='bold', pad=30, color='#2c3e50')
         ax1.set_xlabel('')
         ax1.set_ylabel('Number of Responses', fontsize=13, fontweight='600')
         ax1.spines['top'].set_visible(False)
@@ -277,6 +281,9 @@ if uploaded_file:
         
         wrapped_labels = wrap_labels(fulfillment_counts.index, max_width=35)
         ax1.set_xticklabels(wrapped_labels, rotation=0, ha='center', fontsize=10)
+        
+        # Add extra space at bottom for labels
+        plt.subplots_adjust(bottom=0.25)
         
         add_value_labels(ax1, spacing=3)
         plt.tight_layout()
@@ -302,7 +309,7 @@ if uploaded_file:
         )
         
         ax2.set_title('How do you feel about live virtual training (Zoom/Teams) vs in-person?',
-                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
+                     fontsize=18, fontweight='bold', pad=30, color='#2c3e50')
         ax2.set_xlabel('')
         ax2.set_ylabel('Number of Responses', fontsize=13, fontweight='600')
         ax2.spines['top'].set_visible(False)
@@ -310,6 +317,9 @@ if uploaded_file:
         
         wrapped_labels = wrap_labels(training_counts.index, max_width=35)
         ax2.set_xticklabels(wrapped_labels, rotation=0, ha='center', fontsize=10)
+        
+        # Add extra space at bottom for labels
+        plt.subplots_adjust(bottom=0.25)
         
         add_value_labels(ax2, spacing=3)
         plt.tight_layout()
@@ -331,16 +341,16 @@ if uploaded_file:
         # Calculate average recommendation by role
         df_filtered['recommend_numeric'] = pd.to_numeric(df_filtered[recommend_col], errors='coerce')
         role_recommend = df_filtered.groupby(role_col)['recommend_numeric'].agg(['mean', 'count']).reset_index()
-        role_recommend = role_recommend[role_recommend['count'] >= 1]  # Filter out roles with no responses
+        role_recommend = role_recommend[role_recommend['count'] >= 1]
         role_recommend = role_recommend.sort_values('mean', ascending=False)
         
-        colors3 = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b']
+        colors3 = ['#667eea', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c']
         bars = ax3.barh(role_recommend[role_col], role_recommend['mean'], 
                         color=colors3[:len(role_recommend)], edgecolor='white', linewidth=2)
         
         # Add value labels
         for i, (bar, val, count) in enumerate(zip(bars, role_recommend['mean'], role_recommend['count'])):
-            ax3.text(val + 0.1, bar.get_y() + bar.get_height()/2, 
+            ax3.text(val + 0.2, bar.get_y() + bar.get_height()/2, 
                     f'{val:.1f}/10 (n={int(count)})',
                     va='center', fontsize=10, fontweight='bold', color='#2c3e50')
         
@@ -365,8 +375,12 @@ if uploaded_file:
         # Create crosstab
         fulfillment_years = pd.crosstab(df_filtered[years_col], df_filtered[fulfillment_col])
         
+        # Use distinct colors
+        n_categories = len(fulfillment_years.columns)
+        distinct_palette = DISTINCT_COLORS[:n_categories]
+        
         fulfillment_years.plot(kind='bar', stacked=False, ax=ax4, 
-                              color=['#667eea', '#764ba2', '#f093fb', '#4facfe'], 
+                              color=distinct_palette, 
                               edgecolor='white', linewidth=1.5)
         
         ax4.set_title('Job Fulfillment by Years of Employment', 
@@ -391,8 +405,12 @@ if uploaded_file:
         
         growth_age = pd.crosstab(df_filtered[age_col], df_filtered[growth_col], normalize='index') * 100
         
+        # Use distinct colors for growth
+        n_growth = len(growth_age.columns)
+        growth_palette = [DISTINCT_COLORS[i] for i in [0, 1, 2, 3, 4, 5, 6, 7][:n_growth]]
+        
         growth_age.plot(kind='bar', stacked=True, ax=ax5,
-                       color=['#11998e', '#38ef7d', '#e74c3c', '#95a5a6'],
+                       color=growth_palette,
                        edgecolor='white', linewidth=1.5)
         
         ax5.set_title('Growth Potential Perception by Age Group (%)', 
@@ -421,15 +439,19 @@ if uploaded_file:
             
             recognition_recommend = df_filtered.groupby(recognized_col)['recommend_numeric'].mean().sort_values(ascending=False)
             
+            n_recog = len(recognition_recommend)
+            recog_colors = [DISTINCT_COLORS[i] for i in range(n_recog)]
+            
             bars = ax6a.barh(range(len(recognition_recommend)), recognition_recommend.values,
-                           color=['#11998e', '#38ef7d', '#f093fb', '#e74c3c'][:len(recognition_recommend)],
+                           color=recog_colors,
                            edgecolor='white', linewidth=2)
             
             ax6a.set_yticks(range(len(recognition_recommend)))
-            ax6a.set_yticklabels(['\n'.join(label.split()[:5]) for label in recognition_recommend.index], fontsize=9)
+            wrapped_recog_labels = wrap_labels(recognition_recommend.index, max_width=25)
+            ax6a.set_yticklabels(wrapped_recog_labels, fontsize=9)
             
             for i, (bar, val) in enumerate(zip(bars, recognition_recommend.values)):
-                ax6a.text(val + 0.1, bar.get_y() + bar.get_height()/2, 
+                ax6a.text(val + 0.2, bar.get_y() + bar.get_height()/2, 
                         f'{val:.1f}/10',
                         va='center', fontsize=10, fontweight='bold')
             
@@ -447,15 +469,19 @@ if uploaded_file:
             
             impact_recommend = df_filtered.groupby(impact_col)['recommend_numeric'].mean().sort_values(ascending=False)
             
+            n_impact = len(impact_recommend)
+            impact_colors = [DISTINCT_COLORS[i] for i in [1, 3, 5, 7][:n_impact]]
+            
             bars = ax6b.barh(range(len(impact_recommend)), impact_recommend.values,
-                           color=['#ee0979', '#ff6a00', '#f857a6', '#95a5a6'][:len(impact_recommend)],
+                           color=impact_colors,
                            edgecolor='white', linewidth=2)
             
             ax6b.set_yticks(range(len(impact_recommend)))
-            ax6b.set_yticklabels(['\n'.join(label.split()[:5]) for label in impact_recommend.index], fontsize=9)
+            wrapped_impact_labels = wrap_labels(impact_recommend.index, max_width=25)
+            ax6b.set_yticklabels(wrapped_impact_labels, fontsize=9)
             
             for i, (bar, val) in enumerate(zip(bars, impact_recommend.values)):
-                ax6b.text(val + 0.1, bar.get_y() + bar.get_height()/2, 
+                ax6b.text(val + 0.2, bar.get_y() + bar.get_height()/2, 
                         f'{val:.1f}/10',
                         va='center', fontsize=10, fontweight='bold')
             
@@ -474,10 +500,10 @@ if uploaded_file:
         st.markdown("---")
         st.markdown("### 🚪 How Employees Joined Homes First")
         
-        fig7, ax7 = plt.subplots(figsize=(14, 7))
+        fig7, ax7 = plt.subplots(figsize=(16, 8))
         apply_counts = df_filtered[apply_col].value_counts()
         
-        colors7 = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe']
+        colors7 = ['#667eea', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
         bars = ax7.bar(range(len(apply_counts)), apply_counts.values,
                       color=colors7[:len(apply_counts)], edgecolor='white', linewidth=2)
         
@@ -491,11 +517,14 @@ if uploaded_file:
                    fontsize=12, fontweight='bold', color='#2c3e50')
         
         ax7.set_title('Application Methods', 
-                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
+                     fontsize=18, fontweight='bold', pad=30, color='#2c3e50')
         ax7.set_ylabel('Number of Employees', fontsize=13, fontweight='600')
         ax7.set_xlabel('')
         ax7.spines['top'].set_visible(False)
         ax7.spines['right'].set_visible(False)
+        
+        # Add extra space at bottom for labels
+        plt.subplots_adjust(bottom=0.25)
         plt.tight_layout()
         st.pyplot(fig7)
 
@@ -508,11 +537,10 @@ if uploaded_file:
         df_filtered[disability_col] = df_filtered[disability_col].fillna("No Disability")
         df_filtered[disability_col] = df_filtered[disability_col].replace('nan', 'No Disability')
         
-        unique_disability_values = df_filtered[disability_col].unique()
-        base_colors = ['#3498db', '#e74c3c', '#95a5a6', '#2ecc71', '#f39c12', '#9b59b6']
-        disability_palette = {val: base_colors[i % len(base_colors)] for i, val in enumerate(unique_disability_values)}
+        unique_disability_values = sorted(df_filtered[disability_col].unique())
+        disability_palette = {val: DISTINCT_COLORS[i % len(DISTINCT_COLORS)] for i, val in enumerate(unique_disability_values)}
         
-        fig8, ax8 = plt.subplots(figsize=(14, 7))
+        fig8, ax8 = plt.subplots(figsize=(16, 8))
         
         sns.countplot(
             data=df_filtered,
@@ -543,7 +571,7 @@ if uploaded_file:
         st.markdown("---")
         st.markdown("### 🔍 Disability Analysis by Gender")
         
-        fig9, ax9 = plt.subplots(figsize=(14, 7))
+        fig9, ax9 = plt.subplots(figsize=(16, 8))
         
         sns.countplot(
             data=df_filtered,
@@ -564,7 +592,14 @@ if uploaded_file:
         ax9.spines['right'].set_visible(False)
         ax9.legend(title='Disability Status', title_fontsize=11, fontsize=10,
                   bbox_to_anchor=(1.05, 1), loc='upper left', frameon=True, shadow=True)
-        plt.xticks(rotation=0, ha='center')
+        
+        # Wrap x-axis labels for gender chart
+        gender_labels = [label.get_text() for label in ax9.get_xticklabels()]
+        wrapped_gender_labels = wrap_labels(gender_labels, max_width=20)
+        ax9.set_xticklabels(wrapped_gender_labels, rotation=0, ha='center')
+        
+        # Add extra space at bottom for labels
+        plt.subplots_adjust(bottom=0.2)
         plt.tight_layout()
         st.pyplot(fig9)
         
