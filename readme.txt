@@ -1,21 +1,21 @@
-# 🏠 Homes First Employee Survey Dashboard
+#Employee Survey Dashboard
 
 A comprehensive, interactive dashboard built with Streamlit to analyze and visualize employee survey data from Homes First.
 
 
-## 📋 Overview
+## Overview
 
 This dashboard provides real-time insights into employee satisfaction, engagement, and organizational culture at Homes First. It features interactive filters, dynamic visualizations, and key performance indicators to help leadership make data-driven decisions.
 
-## ✨ Features
+## Features
 
-### 🎯 Key Performance Indicators (KPIs)
+### Key Performance Indicators (KPIs)
 - **Recommendation Rate**: Employee likelihood to recommend the organization (NPS-style)
 - **Recognition Levels**: Percentage of employees feeling acknowledged
 - **Growth Potential**: Employees who see career development opportunities
 - **Positive Impact**: Staff who feel they make a meaningful difference
 
-### 📊 Visual Analytics
+### Visual Analytics
 1. **Job Fulfillment Analysis** - Dual-view donut and bar charts
 2. **Training Preferences** - Lollipop chart comparing virtual vs in-person training
 3. **Recommendation by Role** - Gradient-coded horizontal bars with threshold indicators
@@ -25,12 +25,12 @@ This dashboard provides real-time insights into employee satisfaction, engagemen
 7. **Application Methods** - Distribution of hiring channels with insight cards
 8. **Disability Analysis** - Demographic breakdowns by age and gender
 
-### 🔍 Interactive Filters
+###  Interactive Filters
 - **Role/Department**: Filter by specific teams or positions
 - **Age Group**: Segment data by age demographics
 - **Gender**: Analyze responses by gender identity
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
