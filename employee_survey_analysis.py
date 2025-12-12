@@ -556,76 +556,48 @@ else:
         st.pyplot(fig6b)
 
     # ================================================================
-    # CHART 7: APPLICATION METHOD ANALYSIS - WAFFLE/PICTOGRAM STYLE
+    # CHART 7: APPLICATION METHOD ANALYSIS
     # ================================================================
     st.markdown("---")
     st.markdown("### 🚪 How Employees Joined Homes First")
     
-    col_app_left, col_app_right = st.columns([2, 1])
+    fig7, ax7 = plt.subplots(figsize=(16, 9))
+    apply_counts = df_filtered[apply_col].value_counts().sort_values(ascending=True)
     
-    with col_app_left:
-        fig7, ax7 = plt.subplots(figsize=(14, 7))
-        apply_counts = df_filtered[apply_col].value_counts().sort_values(ascending=True)
-        
-        # Create gradient color scheme
-        colors7 = ['#667eea', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c']
-        
-        # Horizontal bars with shadow effect
-        y_pos = np.arange(len(apply_counts))
-        bars = ax7.barh(y_pos, apply_counts.values,
-                       color=colors7[:len(apply_counts)], 
-                       edgecolor='white', linewidth=3,
-                       height=0.7)
-        
-        # Add percentage labels inside bars
-        total_responses = apply_counts.sum()
-        for i, (bar, val) in enumerate(zip(bars, apply_counts.values)):
-            percentage = (val / total_responses) * 100
-            ax7.text(val/2, bar.get_y() + bar.get_height()/2,
-                   f'{int(val)} ({percentage:.1f}%)', 
-                   ha='center', va='center',
-                   fontsize=12, fontweight='bold', color='white',
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.3))
-        
-        wrapped_apply_labels = wrap_labels(apply_counts.index, max_width=35)
-        ax7.set_yticks(y_pos)
-        ax7.set_yticklabels(wrapped_apply_labels, fontsize=10)
-        
-        ax7.set_title('Distribution of Application Methods', 
-                     fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
-        ax7.set_xlabel('Number of Employees', fontsize=13, fontweight='600')
-        ax7.spines['top'].set_visible(False)
-        ax7.spines['right'].set_visible(False)
-        ax7.spines['left'].set_visible(False)
-        ax7.grid(axis='x', alpha=0.3, linestyle='--')
-        
-        plt.tight_layout()
-        st.pyplot(fig7)
+    # Create gradient color scheme
+    colors7 = ['#667eea', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c']
     
-    with col_app_right:
-        # Summary statistics box
-        st.markdown("#### 📌 Key Insights")
-        most_common = apply_counts.iloc[-1]
-        most_common_pct = (most_common / total_responses) * 100
-        
-        st.markdown(f"""
-        <div style='background: linear-gradient(135deg, #667eea, #764ba2); 
-                    padding: 20px; border-radius: 15px; color: white; margin-top: 20px;'>
-            <h4 style='color: white; margin-top: 0;'>🏆 Most Popular Method</h4>
-            <p style='font-size: 14px; margin: 10px 0;'><strong>{apply_counts.index[-1]}</strong></p>
-            <p style='font-size: 24px; font-weight: bold; margin: 10px 0;'>{int(most_common)} employees</p>
-            <p style='font-size: 16px; opacity: 0.9;'>{most_common_pct:.1f}% of total</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div style='background: linear-gradient(135deg, #11998e, #38ef7d); 
-                    padding: 20px; border-radius: 15px; color: white; margin-top: 20px;'>
-            <h4 style='color: white; margin-top: 0;'>📊 Total Methods</h4>
-            <p style='font-size: 32px; font-weight: bold; margin: 15px 0;'>{len(apply_counts)}</p>
-            <p style='font-size: 14px; opacity: 0.9;'>Different application channels</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # Horizontal bars with shadow effect
+    y_pos = np.arange(len(apply_counts))
+    bars = ax7.barh(y_pos, apply_counts.values,
+                   color=colors7[:len(apply_counts)], 
+                   edgecolor='white', linewidth=3,
+                   height=0.7)
+    
+    # Add percentage labels inside bars
+    total_responses = apply_counts.sum()
+    for i, (bar, val) in enumerate(zip(bars, apply_counts.values)):
+        percentage = (val / total_responses) * 100
+        ax7.text(val/2, bar.get_y() + bar.get_height()/2,
+               f'{int(val)} ({percentage:.1f}%)', 
+               ha='center', va='center',
+               fontsize=12, fontweight='bold', color='white',
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.3))
+    
+    wrapped_apply_labels = wrap_labels(apply_counts.index, max_width=50)
+    ax7.set_yticks(y_pos)
+    ax7.set_yticklabels(wrapped_apply_labels, fontsize=11)
+    
+    ax7.set_title('Distribution of Application Methods', 
+                 fontsize=18, fontweight='bold', pad=20, color='#2c3e50')
+    ax7.set_xlabel('Number of Employees', fontsize=13, fontweight='600')
+    ax7.spines['top'].set_visible(False)
+    ax7.spines['right'].set_visible(False)
+    ax7.spines['left'].set_visible(False)
+    ax7.grid(axis='x', alpha=0.3, linestyle='--')
+    
+    plt.tight_layout()
+    st.pyplot(fig7)
 
     # ================================================================
     # CHART 8: DISABILITIES BY AGE
