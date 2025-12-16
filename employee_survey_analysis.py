@@ -11,6 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from datetime import datetime
 import io
 import json
+import requests
 
 # ================================================================
 # CONFIGURATION & STYLING
@@ -436,7 +437,7 @@ else:
     # ================================================================
     # AI INSIGHTS GENERATION FUNCTION
     # ================================================================
-    async def generate_ai_insights():
+    def generate_ai_insights():
         """Generate AI-powered insights from the survey data"""
         
         # Prepare data summary for AI
@@ -503,21 +504,33 @@ Focus on:
 Respond ONLY with valid JSON, no markdown or additional text."""
 
         try:
-            response = await fetch("https://api.anthropic.com/v1/messages", {
-                "method": "POST",
-                "headers": {
+            # Get API key from Streamlit secrets or environment variable
+            api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+            
+            if not api_key:
+                st.warning("⚠️ Anthropic API key not found. Please add it to your Streamlit secrets.")
+                st.info("Add `ANTHROPIC_API_KEY = 'your-key-here'` to `.streamlit/secrets.toml`")
+                return None
+            
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
                     "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01"
                 },
-                "body": json.dumps({
+                json={
                     "model": "claude-sonnet-4-20250514",
                     "max_tokens": 2000,
                     "messages": [
                         {"role": "user", "content": prompt}
                     ]
-                })
-            })
+                },
+                timeout=60
+            )
             
-            data = await response.json()
+            response.raise_for_status()
+            data = response.json()
             
             if 'content' in data and len(data['content']) > 0:
                 text_content = data['content'][0].get('text', '')
@@ -527,6 +540,12 @@ Respond ONLY with valid JSON, no markdown or additional text."""
             else:
                 return None
                 
+        except requests.exceptions.RequestException as e:
+            st.error(f"API Request Error: {str(e)}")
+            return None
+        except json.JSONDecodeError as e:
+            st.error(f"JSON Parse Error: {str(e)}")
+            return None
         except Exception as e:
             st.error(f"Error generating insights: {str(e)}")
             return None
@@ -539,8 +558,7 @@ Respond ONLY with valid JSON, no markdown or additional text."""
         st.markdown("## 🤖 AI-Generated Insights & Recommendations")
         
         with st.spinner('🔍 Analyzing data and generating insights... This may take a moment.'):
-            import asyncio
-            insights = asyncio.run(generate_ai_insights())
+            insights = generate_ai_insights()
             
             if insights:
                 st.markdown('<div class="insights-box">', unsafe_allow_html=True)
