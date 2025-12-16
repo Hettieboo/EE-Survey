@@ -10,8 +10,6 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from datetime import datetime
 import io
-import json
-import requests
 
 # ================================================================
 # CONFIGURATION & STYLING
@@ -132,7 +130,7 @@ with col_title:
 
 with col_buttons:
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🤖 Generate AI Insights", use_container_width=True, type="primary"):
+    if st.button("📊 Generate Insights", use_container_width=True, type="primary"):
         st.session_state['generate_insights'] = True
     if st.button("📥 Download PDF", use_container_width=True):
         st.session_state['generate_pdf'] = True
@@ -435,130 +433,232 @@ else:
     st.pyplot(fig4)
 
     # ================================================================
-    # AI INSIGHTS GENERATION FUNCTION
+    # STATISTICAL INSIGHTS GENERATION FUNCTION
     # ================================================================
-    def generate_ai_insights():
-        """Generate AI-powered insights from the survey data"""
+    def generate_statistical_insights():
+        """Generate insights using statistical analysis"""
         
-        # Prepare data summary for AI
-        data_summary = {
-            "total_respondents": int(total),
-            "recommendation_metrics": {
-                "average_score": float(avg_recommend),
-                "promoters": int(positive_rec),
-                "promoter_percentage": float(positive_rec/total*100)
-            },
-            "recognition_metrics": {
-                "feel_recognized": int(recognized),
-                "recognition_percentage": float(recognized/total*100)
-            },
-            "growth_metrics": {
-                "see_growth_potential": int(growth),
-                "growth_percentage": float(growth/total*100)
-            },
-            "impact_metrics": {
-                "feel_positive_impact": int(impact),
-                "impact_percentage": float(impact/total*100)
-            },
-            "fulfillment_distribution": fulfillment_counts.to_dict(),
-            "training_preferences": training_counts.to_dict(),
-            "role_recommendations": {
-                str(row[role_col]): {
-                    "avg_score": float(row['mean']),
-                    "count": int(row['count'])
-                }
-                for _, row in role_recommend.iterrows()
-            }
+        insights = {
+            "executive_summary": "",
+            "key_patterns": [],
+            "strengths": [],
+            "concerns": [],
+            "recommendations": [],
+            "demographic_insights": ""
         }
         
-        prompt = f"""You are an expert HR data analyst. Analyze this employee survey data and provide actionable insights.
-
-Survey Data Summary:
-{json.dumps(data_summary, indent=2)}
-
-Please provide a comprehensive analysis in JSON format with the following structure:
-{{
-    "executive_summary": "2-3 sentence overview of key findings",
-    "key_patterns": [
-        {{"pattern": "description", "impact": "high/medium/low"}}
-    ],
-    "strengths": [
-        "identified strength with supporting data"
-    ],
-    "concerns": [
-        "identified concern with supporting data"
-    ],
-    "recommendations": [
-        {{"priority": "high/medium/low", "action": "specific recommendation", "expected_impact": "description"}}
-    ],
-    "demographic_insights": "Any notable patterns by role, age, etc."
-}}
-
-Focus on:
-1. Correlation between recognition and recommendation scores
-2. Training preference implications
-3. Department-specific patterns
-4. Growth perception trends
-5. Actionable recommendations for leadership
-
-Respond ONLY with valid JSON, no markdown or additional text."""
-
-        try:
-            # Get API key from Streamlit secrets or environment variable
-            api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
-            
-            if not api_key:
-                st.warning("⚠️ Anthropic API key not found. Please add it to your Streamlit secrets.")
-                st.info("Add `ANTHROPIC_API_KEY = 'your-key-here'` to `.streamlit/secrets.toml`")
-                return None
-            
-            response = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01"
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 2000,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ]
-                },
-                timeout=60
-            )
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            if 'content' in data and len(data['content']) > 0:
-                text_content = data['content'][0].get('text', '')
-                # Remove markdown code blocks if present
-                text_content = text_content.replace('```json', '').replace('```', '').strip()
-                return json.loads(text_content)
-            else:
-                return None
-                
-        except requests.exceptions.RequestException as e:
-            st.error(f"API Request Error: {str(e)}")
-            return None
-        except json.JSONDecodeError as e:
-            st.error(f"JSON Parse Error: {str(e)}")
-            return None
-        except Exception as e:
-            st.error(f"Error generating insights: {str(e)}")
-            return None
+        # Calculate key metrics
+        promoter_rate = (positive_rec / total * 100)
+        recognition_rate = (recognized / total * 100)
+        growth_rate = (growth / total * 100)
+        impact_rate = (impact / total * 100)
+        
+        # EXECUTIVE SUMMARY
+        summary_parts = []
+        summary_parts.append(f"Survey collected responses from {total} employees with an average recommendation score of {avg_recommend:.1f}/10.")
+        
+        if promoter_rate >= 70:
+            summary_parts.append(f"Strong employee advocacy with {promoter_rate:.0f}% promoters.")
+        elif promoter_rate >= 50:
+            summary_parts.append(f"Moderate employee advocacy at {promoter_rate:.0f}% promoters.")
+        else:
+            summary_parts.append(f"Low employee advocacy at {promoter_rate:.0f}% promoters requires attention.")
+        
+        if recognition_rate < 60:
+            summary_parts.append("Recognition gaps identified as a critical improvement area.")
+        elif growth_rate < 60:
+            summary_parts.append("Growth opportunities perception needs enhancement.")
+        else:
+            summary_parts.append("Strong foundation in recognition and growth perception.")
+        
+        insights["executive_summary"] = " ".join(summary_parts)
+        
+        # KEY PATTERNS
+        # Pattern 1: Overall recommendation score
+        if avg_recommend >= 8:
+            insights["key_patterns"].append({
+                "pattern": f"High recommendation score ({avg_recommend:.1f}/10) indicates strong employee satisfaction",
+                "impact": "high"
+            })
+        elif avg_recommend >= 6:
+            insights["key_patterns"].append({
+                "pattern": f"Moderate recommendation score ({avg_recommend:.1f}/10) shows room for improvement",
+                "impact": "medium"
+            })
+        else:
+            insights["key_patterns"].append({
+                "pattern": f"Low recommendation score ({avg_recommend:.1f}/10) signals critical issues requiring immediate attention",
+                "impact": "high"
+            })
+        
+        # Pattern 2: Recognition correlation
+        recognition_recommend = df_filtered.groupby(recognized_col)['recommend_numeric'].mean()
+        if len(recognition_recommend) > 1:
+            max_recog = recognition_recommend.max()
+            min_recog = recognition_recommend.min()
+            if max_recog - min_recog > 2:
+                insights["key_patterns"].append({
+                    "pattern": f"Strong correlation between recognition and recommendation scores (up to {max_recog - min_recog:.1f} point difference)",
+                    "impact": "high"
+                })
+        
+        # Pattern 3: Role-based variations
+        role_std = role_recommend['mean'].std()
+        if role_std > 1.5:
+            lowest_role = role_recommend.iloc[0]
+            highest_role = role_recommend.iloc[-1]
+            insights["key_patterns"].append({
+                "pattern": f"Significant variation across roles: {highest_role[role_col]} ({highest_role['mean']:.1f}) vs {lowest_role[role_col]} ({lowest_role['mean']:.1f})",
+                "impact": "high"
+            })
+        
+        # Pattern 4: Training preferences
+        top_training = training_counts.idxmax()
+        training_pct = (training_counts.max() / training_counts.sum() * 100)
+        insights["key_patterns"].append({
+            "pattern": f"{training_pct:.0f}% prefer '{top_training}' - indicates clear training delivery preference",
+            "impact": "medium"
+        })
+        
+        # STRENGTHS
+        if promoter_rate >= 60:
+            insights["strengths"].append(f"Strong employee advocacy with {promoter_rate:.0f}% promoter rate (score 8+/10)")
+        
+        if recognition_rate >= 70:
+            insights["strengths"].append(f"Excellent recognition culture - {recognition_rate:.0f}% of employees feel recognized")
+        
+        if growth_rate >= 70:
+            insights["strengths"].append(f"Strong career development perception - {growth_rate:.0f}% see growth potential")
+        
+        if impact_rate >= 70:
+            insights["strengths"].append(f"High sense of purpose - {impact_rate:.0f}% feel they make a positive impact")
+        
+        # Check fulfillment
+        fulfillment_positive = sum([count for label, count in fulfillment_counts.items() 
+                                   if any(word in str(label).lower() for word in ['yes', 'fulfilling', 'rewarding'])])
+        if fulfillment_positive / total >= 0.7:
+            insights["strengths"].append(f"Strong job fulfillment - {fulfillment_positive/total*100:.0f}% report positive fulfillment")
+        
+        # CONCERNS
+        if promoter_rate < 50:
+            insights["concerns"].append(f"Low promoter rate ({promoter_rate:.0f}%) - less than half of employees would recommend the organization")
+        
+        if recognition_rate < 60:
+            insights["concerns"].append(f"Recognition gap - only {recognition_rate:.0f}% feel adequately recognized, {100-recognition_rate:.0f}% do not")
+        
+        if growth_rate < 60:
+            insights["concerns"].append(f"Limited growth perception - {100-growth_rate:.0f}% of employees don't see clear growth opportunities")
+        
+        if impact_rate < 60:
+            insights["concerns"].append(f"Purpose disconnect - {100-impact_rate:.0f}% don't feel they're making a positive impact")
+        
+        # Check for low-scoring roles
+        low_roles = role_recommend[role_recommend['mean'] < 7]
+        if len(low_roles) > 0:
+            role_list = ", ".join([f"{row[role_col]} ({row['mean']:.1f})" for _, row in low_roles.iterrows()])
+            insights["concerns"].append(f"Departments with concerning scores: {role_list}")
+        
+        # RECOMMENDATIONS
+        # Priority 1: Address lowest metric
+        metrics = {
+            'recognition': recognition_rate,
+            'growth': growth_rate,
+            'impact': impact_rate,
+            'recommendation': promoter_rate
+        }
+        lowest_metric = min(metrics, key=metrics.get)
+        
+        if lowest_metric == 'recognition' and recognition_rate < 70:
+            insights["recommendations"].append({
+                "priority": "high",
+                "action": "Implement a structured recognition program with peer-to-peer and manager recognition components",
+                "expected_impact": f"Could improve recommendation scores by 1-2 points based on correlation data. Target: increase recognition rate from {recognition_rate:.0f}% to 80%+"
+            })
+        
+        if lowest_metric == 'growth' and growth_rate < 70:
+            insights["recommendations"].append({
+                "priority": "high",
+                "action": "Develop clear career pathways and communicate advancement opportunities through quarterly growth conversations",
+                "expected_impact": f"Address {100-growth_rate:.0f}% who don't see growth potential, improving retention and engagement"
+            })
+        
+        # Training recommendation
+        if 'virtual' in top_training.lower():
+            insights["recommendations"].append({
+                "priority": "medium",
+                "action": f"Expand virtual training offerings - {training_pct:.0f}% prefer this format",
+                "expected_impact": "Higher training participation and skill development through preferred delivery method"
+            })
+        elif 'person' in top_training.lower() or 'site' in top_training.lower():
+            insights["recommendations"].append({
+                "priority": "medium",
+                "action": f"Prioritize in-person training sessions - {training_pct:.0f}% prefer this format",
+                "expected_impact": "Improved training effectiveness and team building through face-to-face interaction"
+            })
+        
+        # Role-specific recommendations
+        if len(low_roles) > 0:
+            lowest_role_name = low_roles.iloc[0][role_col]
+            lowest_role_score = low_roles.iloc[0]['mean']
+            insights["recommendations"].append({
+                "priority": "high",
+                "action": f"Conduct focus groups with {lowest_role_name} (score: {lowest_role_score:.1f}) to identify specific pain points",
+                "expected_impact": "Targeted interventions for departments with lowest satisfaction, reducing turnover risk"
+            })
+        
+        # Recognition-recommendation correlation
+        if recognition_rate < 70:
+            insights["recommendations"].append({
+                "priority": "high",
+                "action": "Launch monthly recognition initiatives (Employee of the Month, spot bonuses, public acknowledgments)",
+                "expected_impact": f"Recognition strongly correlates with recommendations - could improve overall scores significantly"
+            })
+        
+        # General recommendations
+        if avg_recommend < 8:
+            insights["recommendations"].append({
+                "priority": "medium",
+                "action": "Conduct follow-up pulse surveys quarterly to track improvement in key metrics",
+                "expected_impact": "Continuous feedback loop to measure effectiveness of interventions"
+            })
+        
+        # DEMOGRAPHIC INSIGHTS
+        demographic_parts = []
+        
+        # Role insights
+        if len(role_recommend) > 1:
+            highest_role = role_recommend.iloc[-1]
+            lowest_role = role_recommend.iloc[0]
+            demographic_parts.append(f"Role analysis shows {highest_role[role_col]} has highest satisfaction ({highest_role['mean']:.1f}/10) while {lowest_role[role_col]} needs attention ({lowest_role['mean']:.1f}/10).")
+        
+        # Years of employment insights
+        if years_col in df_filtered.columns:
+            years_recommend = df_filtered.groupby(years_col)['recommend_numeric'].mean().sort_values()
+            if len(years_recommend) > 1:
+                newest = years_recommend.index[0]
+                newest_score = years_recommend.values[0]
+                veteran = years_recommend.index[-1]
+                veteran_score = years_recommend.values[-1]
+                demographic_parts.append(f"Tenure analysis: {newest} employees score {newest_score:.1f} vs {veteran} employees at {veteran_score:.1f}.")
+        
+        # Training preferences by role
+        training_role = pd.crosstab(df_filtered[role_col], df_filtered[training_pref_col])
+        if len(training_role) > 0:
+            demographic_parts.append(f"Training preferences vary by department - consider customized delivery methods per team.")
+        
+        insights["demographic_insights"] = " ".join(demographic_parts) if demographic_parts else "Consistent patterns across demographic groups - no major variations detected."
+        
+        return insights
 
     # ================================================================
-    # DISPLAY AI INSIGHTS
+    # DISPLAY STATISTICAL INSIGHTS
     # ================================================================
     if 'generate_insights' in st.session_state and st.session_state['generate_insights']:
         st.markdown("---")
-        st.markdown("## 🤖 AI-Generated Insights & Recommendations")
+        st.markdown("## 📊 Data-Driven Insights & Recommendations")
         
-        with st.spinner('🔍 Analyzing data and generating insights... This may take a moment.'):
-            insights = generate_ai_insights()
+        with st.spinner('🔍 Analyzing survey data and generating insights...'):
+            insights = generate_statistical_insights()
             
             if insights:
                 st.markdown('<div class="insights-box">', unsafe_allow_html=True)
@@ -630,4 +730,4 @@ Respond ONLY with valid JSON, no markdown or additional text."""
         st.session_state['generate_insights'] = False
 
     st.markdown("---")
-    st.markdown("<p style='text-align: center; color: #7f8c8d; padding: 20px;'>Dashboard created with Streamlit • Powered by Claude AI • Homes First Employee Survey 2024</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #7f8c8d; padding: 20px;'>Dashboard created with Streamlit • Statistical Analysis Powered • Homes First Employee Survey 2024</p>", unsafe_allow_html=True)
