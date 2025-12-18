@@ -15,7 +15,7 @@ import io
 # CONFIGURATION & STYLING
 # ================================================================
 
-st.set_page_config(page_title="Homes First Survey Dashboard", layout="wide")
+st.set_page_config(page_title="Employee Survey Dashboard", layout="wide")
 
 sns.set_style("whitegrid")
 plt.rcParams['figure.figsize'] = (12, 6)
@@ -126,7 +126,7 @@ st.markdown("""
 col_title, col_buttons = st.columns([3, 1])
 
 with col_title:
-    st.markdown("<h1>🏠 Homes First Employee Survey Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>Employee Survey Dashboard</h1>", unsafe_allow_html=True)
 
 with col_buttons:
     st.markdown("<br>", unsafe_allow_html=True)
